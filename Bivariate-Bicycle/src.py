@@ -47,7 +47,7 @@ class Simulator:
         GF = galois.GF(2)
         arr = GF(self.Hz.T)
         k = 2 * (self.Hz.T.shape[1] - matrix_rank(arr))
-        def embed_code(init):
+        def embed_code(code, init):
             emb_m, emb_ell, A_ind, B_ind = code
 
             lattice = np.empty((2*emb_m, 2*emb_ell), dtype=object)
@@ -302,8 +302,8 @@ class Simulator:
         if only_coherent_error ==False:
             self.c.append("DEPOLARIZE1", [self.all_qbts[qbt] for qbt in self.qbts], 0.001+2*(self.code[12]+self.code[13])*self.idle_error)
         else:# coherent error
-            # self.c.append("Z_ERROR",[all_qbts[qbt] for qbt in qbts[::-1]], np.sin(self.p)**2)
-            self.c += generate_error(Theta, Pauli)
+            self.c.append("Z_ERROR",[self.all_qbts[qbt] for qbt in self.qbts[::-1]], np.sin(self.p)**2)
+            # self.c += generate_error(Theta, Pauli)
         self.route_confirmation_z[self.sr_z_checks] = [1 for z in self.sr_z_checks]#[1 if np.random.random() < z_check_succ_probs[z] else 0 for z in sr_z_checks]
         self.route_confirmation_z[self.lr_z_checks] = [1 for z in self.lr_z_checks]#[1 if np.random.random() < z_check_succ_probs[z] else 0 for z in lr_z_checks]
         self.route_confirmation_x[self.sr_x_checks] = [1 for x in self.sr_x_checks]#[1 if np.random.random() < x_check_succ_probs[x] else 0 for x in sr_x_checks]

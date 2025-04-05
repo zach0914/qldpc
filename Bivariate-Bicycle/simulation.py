@@ -1,7 +1,7 @@
 import numpy as np
 import stim
 from bp_osd import BPOSD
-from basics import Simulator
+from src import Simulator
 
 from bp_osd import BPOSD
 from tqdm import tqdm
@@ -32,7 +32,7 @@ def Simulation(code, Theta, Pauli):
     # logical_error_rate = []
     # for noise in tqdm(noises):
     s = Simulator(code)
-    s.create_initial_circuit(T, lr_time, 0, only_coherent_error=True)
+    s.create_initial_circuit(T, lr_time, 0.01, only_coherent_error=True)
     s.simulate(Theta, Pauli, only_coherent_error=True)
     c = s.c
     # print(c)
@@ -54,7 +54,7 @@ def Simulation(code, Theta, Pauli):
 
     num_errors = np.sum(np.any(predicted_observables != actual_observables, axis=1))
     # logical_error_rate.append(num_errors / N)
-    # print(f'Error rate: {num_errors / N * 100}%')
+    print(f'Error rate: {num_errors / N * 100}%')
     return num_errors / N# logical_error_rate
 
 theta_list = np.linspace(0, 0.3, 100)

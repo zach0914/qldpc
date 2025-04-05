@@ -7,7 +7,7 @@ from scipy.sparse import lil_matrix
 import os
 from tqdm import tqdm
 import galois
-from utils import cyclic_shift_matrix, par2gen, commute, SGSOP, get_logicals, manhattan
+from utils import cyclic_shift_matrix, par2gen, commute, SGSOP, get_logicals, manhattan, generate_error
 #ml = n/2 for X check, ml = n/2 for Z check
 # k = 8
 # code = [12,3,9,1,2,0,1,11,3,12,2,0,11,6]
@@ -112,112 +112,194 @@ def embed_code(code, init):
     return lattice
 
 lattice = embed_code((code[8],code[9],code[10],code[11]), 0)
+# print(lattice)
+all_qbts = {} # 存储全部2n个qubits
 
-all_qbts = {}
-
-qbts = np.array([None for i in range(2*m*ell)])
-for i in range(lattice.shape[0]):
-    for j in range(lattice.shape[1]):
-        if lattice[i][j][0] == "r" or lattice[i][j][0] == "l":
-            all_qbts[(i,j)] = int(lattice[i][j][1:])
-            qbts[int(lattice[i][j][1:])] = (i, j)
+qbts = np.array([None for i in range(2*m*ell)]) # 存储n个data qubit的坐标
+# for i in range(lattice.shape[0]):
+#     for j in range(lattice.shape[1]):
+#         if lattice[i][j][0] == "r" or lattice[i][j][0] == "l":
+#             all_qbts[(i,j)] = int(lattice[i][j][1:])
+#             qbts[int(lattice[i][j][1:])] = (i, j)
 x_checks = np.array([None for i in range(m*ell)])
 z_checks = np.array([None for i in range(m*ell)])
 
-for i in range(lattice.shape[0]):
-    for j in range(lattice.shape[1]):
-        if lattice[i][j][0] == "x":
-            all_qbts[(i,j)] = int(lattice[i][j][1:]) + 2*m*ell
-            x_checks[int(lattice[i][j][1:])] = (i, j)
-        elif lattice[i][j][0] == "z":
-            all_qbts[(i,j)] = int(lattice[i][j][1:]) + 2*m*ell
-            z_checks[int(lattice[i][j][1:])-(m*ell)] = (i, j)
-
+# for i in range(lattice.shape[0]):
+#     for j in range(lattice.shape[1]):
+#         if lattice[i][j][0] == "x":
+#             all_qbts[(i,j)] = int(lattice[i][j][1:]) + 2*m*ell
+#             x_checks[int(lattice[i][j][1:])] = (i, j)
+#         elif lattice[i][j][0] == "z":
+#             all_qbts[(i,j)] = int(lattice[i][j][1:]) + 2*m*ell
+#             z_checks[int(lattice[i][j][1:])-(m*ell)] = (i, j)
+# print(all_qbts)
+# print(qbts)
 x_rs = []
 z_rs = []
-for i in range(m*ell):
-    gen_qbts = qbts[np.where(Hx[i])[0]]
-    x_rs.append(make_circle(gen_qbts)[2])
-for i in range(m*ell):
-    gen_qbts = qbts[np.where(Hz[i])[0]]
-    z_rs.append(make_circle(gen_qbts)[2])
-
+# for i in range(m*ell):
+#     gen_qbts = qbts[np.where(Hx[i])[0]]
+#     x_rs.append(make_circle(gen_qbts)[2]) # return the radius of the cycle
+# for i in range(m*ell):
+#     gen_qbts = qbts[np.where(Hz[i])[0]]  # return the radius of the cycle
+#     z_rs.append(make_circle(gen_qbts)[2])
+# print(f'x_rs = {x_rs}\nz_rs = {z_rs}\n')
 lr_x_checks = np.array([], dtype=int)
 sr_x_checks = np.array([], dtype=int)
 lr_z_checks = np.array([], dtype=int)
 sr_z_checks = np.array([], dtype=int)
 
+# 模拟syndrome measurement成功概率
 z_check_succ_probs = np.ones(m*ell)
 x_check_succ_probs = np.ones(m*ell)
 
-for i, x_check in enumerate(x_checks):
-    gen_qbts = qbts[np.where(Hx[i])[0]]
+# for i, x_check in enumerate(x_checks):
+#     gen_qbts = qbts[np.where(Hx[i])[0]]
 
-    nonlocal_qbts = []
-    if (x_rs[i] > (min(x_rs)+np.std(x_rs))):
-        lr_x_checks = np.append(lr_x_checks, i)
-    else:
-        sr_x_checks = np.append(sr_x_checks, i)
+#     nonlocal_qbts = []
+#     if (x_rs[i] > (min(x_rs)+np.std(x_rs))):
+#         lr_x_checks = np.append(lr_x_checks, i)
+#     else:
+#         sr_x_checks = np.append(sr_x_checks, i)
 
-    # for qbt in gen_qbts:
-        # x_check_succ_probs[i] *= probs[manhattan([x_check, qbt])+1]
+#     # for qbt in gen_qbts:
+#         # x_check_succ_probs[i] *= probs[manhattan([x_check, qbt])+1]
 
-for i, z_check in enumerate(z_checks):
-    gen_qbts = qbts[np.where(Hz[i])[0]]
+# # print(x_check_succ_probs)
+# for i, z_check in enumerate(z_checks):
+#     gen_qbts = qbts[np.where(Hz[i])[0]]
 
-    nonlocal_qbts = []
-    if (z_rs[i] > min(z_rs)+np.std(z_rs)):
-        lr_z_checks = np.append(lr_z_checks, i)
-    else:
-        sr_z_checks = np.append(sr_z_checks, i)
+#     nonlocal_qbts = []
+#     if (z_rs[i] > min(z_rs)+np.std(z_rs)):
+#         lr_z_checks = np.append(lr_z_checks, i)
+#     else:
+#         sr_z_checks = np.append(sr_z_checks, i)
 
-    # for qbt in gen_qbts:
-        # z_check_succ_probs[i] *= probs[manhattan([z_check, qbt])+1]
+#     # for qbt in gen_qbts:
+#         # z_check_succ_probs[i] *= probs[manhattan([z_check, qbt])+1] 
 
-adv = sum(np.array(x_rs)[lr_x_checks]) / sum(x_rs)
+# adv = sum(np.array(x_rs)[lr_x_checks]) / sum(x_rs)
 
-def measure_x_checks(checks, p, scale=False):
+def measure_x_checks(checks, p, scale=False, only_coherent_error=False):
     c = stim.Circuit()
     c.append("H", [all_qbts[x_checks[x_check]] for x_check in checks])
-    # c.append("DEPOLARIZE1", [all_qbts[x_checks[x_check]] for x_check in checks], p/10)
+    if only_coherent_error == False:
+        c.append("DEPOLARIZE1", [all_qbts[x_checks[x_check]] for x_check in checks], p/10)
     for x in checks:
         gen_qbts = qbts[np.where(Hx[x])[0]]
         for qbt in gen_qbts:
             path_qbts = [all_qbts[x_checks[x]], all_qbts[qbt]]
             c.append("CNOT", path_qbts)
-            # if scale:
-                # c.append("DEPOLARIZE2", path_qbts, p*muls001[manhattan([x_checks[x], qbt])+1])
-            # else:
-                # c.append("DEPOLARIZE2", path_qbts, p)
+            if only_coherent_error == False:
+                if scale:
+                    c.append("DEPOLARIZE2", path_qbts, p*muls001[manhattan([x_checks[x], qbt])+1])
+                else:
+                    c.append("DEPOLARIZE2", path_qbts, p)
     c.append("H", [all_qbts[x_checks[x_check]] for x_check in checks])
     # c.append("DEPOLARIZE1", [all_qbts[x_checks[x_check]] for x_check in checks], p/10)
     return c
 
-def measure_z_checks(checks, p, scale=False):
+def measure_z_checks(checks, p, scale=False, only_coherent_error =False):
     c = stim.Circuit()
     for z in checks:
         gen_qbts = qbts[np.where(Hz[z])[0]]
         for qbt in gen_qbts:
             path_qbts = [all_qbts[qbt], all_qbts[z_checks[z]]]
             c.append("CNOT", path_qbts)
-            # if scale:
-                # c.append("DEPOLARIZE2", path_qbts, p*muls001[manhattan([qbt, z_checks[z]])+1])
-            # else:
-                # c.append("DEPOLARIZE2", path_qbts, p)
+            if only_coherent_error == False:
+                if scale:
+                    c.append("DEPOLARIZE2", path_qbts, p*muls001[manhattan([qbt, z_checks[z]])+1])
+                else:
+                    c.append("DEPOLARIZE2", path_qbts, p)
     return c
 
-def all_checks(maximum_error_rate = 0):
+def all_checks(maximum_error_rate = 0, scale = False, only_coherent_error = False):
     c = stim.Circuit()
-    c += measure_z_checks(sr_z_checks, maximum_error_rate, scale=False)
-    c += measure_z_checks(lr_z_checks, maximum_error_rate, scale=False)
-    c += measure_x_checks(sr_x_checks, maximum_error_rate, scale=False)
-    c += measure_x_checks(lr_x_checks, maximum_error_rate, scale=False)
+    c += measure_z_checks(sr_z_checks, maximum_error_rate, scale, only_coherent_error)
+    c += measure_z_checks(lr_z_checks, maximum_error_rate, scale, only_coherent_error)
+    c += measure_x_checks(sr_x_checks, maximum_error_rate, scale, only_coherent_error)
+    c += measure_x_checks(lr_x_checks, maximum_error_rate, scale, only_coherent_error)
     return c
 
-class Simulation:
-    def __init__(self, num_rounds, lr_time, maximum_error_rate = 0.01, original = True):
+class Simulator:
+    def __init__(self, code):
+        ell = code[0]
+        m = code[1]
+        # theta_list = np.linspace(0, 0.3, 100)
+        # theta = theta_list[0]
+        # Pauli = [('Z', i) for i in range(m * ell * 4)]
+        # Theta = np.array([theta for _ in range(len(Pauli))])
+
+        x = np.kron(cyclic_shift_matrix(ell), np.eye(m))
+        y = np.kron(np.eye(ell), cyclic_shift_matrix(m))
+
+        A1 = matrix_power(x, code[2])
+        A2 = matrix_power(y, code[3])
+        A3 = matrix_power(y, code[4])
+        A = ( A1 + A2 + A3 ) % 2
+
+        B1 = matrix_power(y, code[5])
+        B2 = matrix_power(x, code[6])
+        B3 = matrix_power(x, code[7])
+        B = ( B1 + B2 + B3 ) % 2
+
+        Hx = np.hstack([A, B]).astype(int)
+        Hz = np.hstack([B.T, A.T]).astype(int)
+
+        GF = galois.GF(2)
+        arr = GF(Hz.T)
+        k = 2 * (Hz.T.shape[1] - matrix_rank(arr))
+
+        lattice = embed_code((code[8],code[9],code[10],code[11]), 0)
+        for i in range(lattice.shape[0]):
+            for j in range(lattice.shape[1]):
+                if lattice[i][j][0] == "r" or lattice[i][j][0] == "l":
+                    all_qbts[(i,j)] = int(lattice[i][j][1:])
+                    qbts[int(lattice[i][j][1:])] = (i, j)
+        for i in range(lattice.shape[0]):
+            for j in range(lattice.shape[1]):
+                if lattice[i][j][0] == "x":
+                    all_qbts[(i,j)] = int(lattice[i][j][1:]) + 2*m*ell
+                    x_checks[int(lattice[i][j][1:])] = (i, j)
+                elif lattice[i][j][0] == "z":
+                    all_qbts[(i,j)] = int(lattice[i][j][1:]) + 2*m*ell
+                    z_checks[int(lattice[i][j][1:])-(m*ell)] = (i, j)
+        for i in range(m*ell):
+            gen_qbts = qbts[np.where(Hx[i])[0]]
+            x_rs.append(make_circle(gen_qbts)[2]) # return the radius of the cycle
+        for i in range(m*ell):
+            gen_qbts = qbts[np.where(Hz[i])[0]]  # return the radius of the cycle
+            z_rs.append(make_circle(gen_qbts)[2])
+        for i, x_check in enumerate(x_checks):
+            gen_qbts = qbts[np.where(Hx[i])[0]]
+
+            nonlocal_qbts = []
+            if (x_rs[i] > (min(x_rs)+np.std(x_rs))):
+                lr_x_checks = np.append(lr_x_checks, i)
+            else:
+                sr_x_checks = np.append(sr_x_checks, i)
+
+            # for qbt in gen_qbts:
+                # x_check_succ_probs[i] *= probs[manhattan([x_check, qbt])+1]
+
+        # print(x_check_succ_probs)
+        for i, z_check in enumerate(z_checks):
+            gen_qbts = qbts[np.where(Hz[i])[0]]
+
+            nonlocal_qbts = []
+            if (z_rs[i] > min(z_rs)+np.std(z_rs)):
+                lr_z_checks = np.append(lr_z_checks, i)
+            else:
+                sr_z_checks = np.append(sr_z_checks, i)
+
+            # for qbt in gen_qbts:
+                # z_check_succ_probs[i] *= probs[manhattan([z_check, qbt])+1] 
+
+        # adv = sum(np.array(x_rs)[lr_x_checks]) / sum(x_rs)
+
+    def create_initial_circuit(self, num_rounds, lr_time, maximum_error_rate = 0.01, only_coherent_error = False):
         self.num_rounds = num_rounds
         self.lr_time = lr_time
+
         self.prev_meas_z = np.arange(1, m*ell+1, dtype=int)
         self.prev_meas_x = np.arange(m*ell+1, 2*m*ell+1,  dtype=int)
         self.curr_meas_z = np.zeros(m*ell, dtype=int)
@@ -228,10 +310,9 @@ class Simulation:
         self.route_confirmation_x = np.ones(m*ell, dtype=int)
         # self.route_confirmation_x[lr_x_checks] = 0
         self.detector_history = np.zeros(m*ell)
-        # if original == True:
+
         self.p = maximum_error_rate
-        # else:
-            # self.p = 0
+
         self.c = stim.Circuit()
         for key, value in all_qbts.items():
             self.c.append("QUBIT_COORDS", value, (key[0],key[1],0))
@@ -243,18 +324,16 @@ class Simulation:
 
         self.c.append("MR", [all_qbts[z_check] for z_check in z_checks])
         self.c.append("MR", [all_qbts[x_check] for x_check in x_checks])
-        # if original == True:
-            # self.c.append("Z_ERROR", [all_qbts[qbt] for qbt in qbts], 0.001+2*(code[12]+code[13])*idle_error)
-    def detectors(self):#, type):
+        if only_coherent_error == False:
+            self.c.append("Z_ERROR", [all_qbts[qbt] for qbt in qbts], 0.001+2*(code[12]+code[13])*idle_error)
+    def detectors(self):
         num_meas = self.c.num_measurements
-        # if not type:
         for i, z_check in enumerate(self.curr_meas_z):
             coord = z_checks[i]
             if z_check:
                 self.c.append("DETECTOR", [stim.target_rec(self.curr_meas_z[i]-num_meas-1), stim.target_rec(self.prev_meas_z[i]-num_meas-1)], (coord[0], coord[1], 0))
                 self.prev_meas_z[i] = self.curr_meas_z[i]
                 self.curr_meas_z[i] = 0
-        # else:
         for i, x_check in enumerate(self.curr_meas_x):
             coord = x_checks[i]
             if x_check:
@@ -288,10 +367,10 @@ class Simulation:
     #     for i, x_check in enumerate(sr_x_checks):
     #         self.c.append("R", all_qbts[x_checks[x_check]])
 
-    #     if with_synd_noise: self.c.append("X_ERROR", [all_qbts[z_checks[z_check]] for z_check in sr_z_checks], self.p/10)
+    #     # if with_synd_noise: self.c.append("X_ERROR", [all_qbts[z_checks[z_check]] for z_check in sr_z_checks], self.p/10)
     #     if with_synd_noise: self.c.append("X_ERROR", [all_qbts[x_checks[x_check]] for x_check in sr_x_checks], self.p/10)
 
-    def lr_round(self, with_gate_noise=True, with_synd_noise=True):
+    def lr_round(self, with_gate_noise=False, with_synd_noise=False, only_coherent_error = False):
         curr_sr_z_checks = sr_z_checks[self.route_confirmation_z[sr_z_checks]==1]
         curr_sr_x_checks = sr_x_checks[self.route_confirmation_x[sr_x_checks]==1]
         curr_lr_z_checks = lr_z_checks[self.route_confirmation_z[lr_z_checks]==1]
@@ -302,13 +381,10 @@ class Simulation:
         all_z_checks = np.concatenate([sr_z_checks, lr_z_checks])
         all_x_checks = np.concatenate([sr_x_checks, lr_x_checks])
 
-        self.c += all_checks(self.p)
+        self.c += all_checks(self.p if with_gate_noise else 0, scale=True)
 
-        # self.c += measure_z_checks(curr_z_checks, self.p if with_gate_noise else 0, scale=True)
-        # self.c += measure_x_checks(curr_x_checks, self.p if with_gate_noise else 0, scale=True)
-
-        # if with_synd_noise: self.c.append("X_ERROR", [all_qbts[z_checks[z_check]] for z_check in curr_z_checks], self.p)
-        # if with_synd_noise: self.c.append("X_ERROR", [all_qbts[x_checks[x_check]] for x_check in curr_x_checks], self.p)
+        if with_synd_noise: self.c.append("X_ERROR", [all_qbts[z_checks[z_check]] for z_check in curr_z_checks], self.p)
+        if with_synd_noise: self.c.append("X_ERROR", [all_qbts[x_checks[x_check]] for x_check in curr_x_checks], self.p)
 
         for i, z_check in enumerate(curr_z_checks):
             self.c.append("M", all_qbts[z_checks[z_check]])
@@ -321,22 +397,24 @@ class Simulation:
         for i, x_check in enumerate(all_x_checks):
             self.c.append("R", all_qbts[x_checks[x_check]])
 
-        # if with_synd_noise: self.c.append("X_ERROR", [all_qbts[z_checks[z_check]] for z_check in all_z_checks], self.p/10)
-        # if with_synd_noise: self.c.append("X_ERROR", [all_qbts[x_checks[x_check]] for x_check in all_x_checks], self.p/10)
+        if with_synd_noise: self.c.append("X_ERROR", [all_qbts[z_checks[z_check]] for z_check in all_z_checks], self.p/10)
+        if with_synd_noise: self.c.append("X_ERROR", [all_qbts[x_checks[x_check]] for x_check in all_x_checks], self.p/10)
 
-    def simulate(self, original = True):
-        # print(self.c.num_measurements)
-        self.c.append("DEPOLARIZE1", [all_qbts[qbt] for qbt in qbts], self.p)#, 0.001+2*(code[12]+code[13])*idle_error)
+    def simulate(self, Theta, Pauli, only_coherent_error=False):
         # for i in range(1,self.num_rounds):
         self.c.append("SHIFT_COORDS", [], (0,0,1))
         # if (i%self.lr_time==0):
-        # self.c.append("DEPOLARIZE1", [all_qbts[qbt] for qbt in qbts], 0.001+2*(code[12]+code[13])*idle_error)
+        if only_coherent_error ==False:
+            self.c.append("DEPOLARIZE1", [all_qbts[qbt] for qbt in qbts], 0.001+2*(code[12]+code[13])*idle_error)
+        else:# coherent error
+            # self.c.append("Z_ERROR",[all_qbts[qbt] for qbt in qbts[::-1]], np.sin(self.p)**2)
+            self.c += generate_error(Theta, Pauli)
         self.route_confirmation_z[sr_z_checks] = [1 for z in sr_z_checks]#[1 if np.random.random() < z_check_succ_probs[z] else 0 for z in sr_z_checks]
         self.route_confirmation_z[lr_z_checks] = [1 for z in lr_z_checks]#[1 if np.random.random() < z_check_succ_probs[z] else 0 for z in lr_z_checks]
         self.route_confirmation_x[sr_x_checks] = [1 for x in sr_x_checks]#[1 if np.random.random() < x_check_succ_probs[x] else 0 for x in sr_x_checks]
         self.route_confirmation_x[lr_x_checks] = [1 for x in lr_x_checks]#[1 if np.random.random() < x_check_succ_probs[x] else 0 for x in lr_x_checks]
-        # self.detector_history = np.vstack([self.detector_history, self.route_confirmation_z])
-        self.lr_round()
+        self.detector_history = np.vstack([self.detector_history, self.route_confirmation_z])
+        self.lr_round(only_coherent_error)
             # else:
             #     self.c.append("DEPOLARIZE1", [all_qbts[qbt] for qbt in qbts], 0.001+2*code[12]*idle_error)
             #     self.route_confirmation_z[sr_z_checks] = [1 for z in sr_z_checks] #[1 if np.random.random() < z_check_succ_probs[z] else 0 for z in sr_z_checks]
@@ -347,63 +425,11 @@ class Simulation:
             #     self.sr_round()
         self.detectors()
 
+        # self.route_confirmation_z = np.ones(m*ell)
+        # self.route_confirmation_x = np.ones(m*ell)
+        # self.detector_history = np.vstack([self.detector_history, self.route_confirmation_z])
+        # self.lr_round(with_gate_noise=False, with_synd_noise=False)
+        # self.detectors(False)
+
         self.c.append("M",[all_qbts[qbt] for qbt in qbts[::-1]])
         self.observables(False)
-
-from bp_osd import BPOSD
-
-def simulator():
-    lr_time = 1
-    
-    T = 1
-    # for ii in tqdm(range(num_iters)):
-    noises = range(1, 20 + 1)
-    # noises = [0.005]#, 0.01, 0.015, 0.02, 0.025, 0.03, 0.035, 0.04, 0.045, 0.05, 0.06, 0.075, 0.1, 0.2, 0.3]
-    logical_error_rate = []
-    for noise in tqdm(noises):
-        # if (ii % 100) == 0:
-        # print(noise * 0.001)
-        original = Simulation(T, lr_time)
-        original.simulate()
-        original_circuit = original.c
-        # print(c)
-        noise_rate = noise * 0.02
-        actual = Simulation(T, lr_time, noise_rate, False)
-        actual.simulate(False)
-        
-        circuit = actual.c
-        sampler = circuit.compile_detector_sampler()
-        dem = original_circuit.detector_error_model()
-        # pcm = lil_matrix((dem.num_detectors, dem.num_errors), dtype=np.bool_)
-        # lcm = lil_matrix((dem.num_observables, dem.num_errors), dtype=np.bool_)
-
-        # for i, error_event in enumerate(c.explain_detector_error_model_errors()):
-        #     dets = [det.dem_target.val for det in error_event.dem_error_terms if det.dem_target.is_relative_detector_id()]
-        #     obs = [ob.dem_target.val for ob in error_event.dem_error_terms if ob.dem_target.is_logical_observable_id()]
-        #     pcm[[dets],i] = 1
-        #     lcm[[obs],i] = 1
-
-        # pcm = pcm.astype(np.uint8)
-        # lcm = lcm.astype(np.uint8)
-        # print(pcm.shape)
-        # print(lcm.shape)
-        # print("pcm values:", pcm.data)
-        # print("lcm values:", lcm.data)
-        decoder = BPOSD(dem, max_bp_iters = 20) #使用BP_OSD
-
-        # # sample 10 shots
-        N = 20
-        syndrome, actual_observables = sampler.sample(shots=N, separate_observables=True)
-
-        # # 打印 syndrome 的一些信息
-        # print("Syndrome shape:", syndrome.shape)
-        # print("First few syndromes:", syndrome[:5])
-
-        predicted_observables = decoder.decode_batch(syndrome)
-        # print(f"actual_observable:{actual_observables}\npredicted_observables:{predicted_observables}")
-
-        num_errors = np.sum(np.any(predicted_observables != actual_observables, axis=1))
-        logical_error_rate.append(num_errors / N)
-        print(f'Error rate: {num_errors / N * 100}%')
-    return noises, logical_error_rate
-noises, logical_error_rate = simulator()

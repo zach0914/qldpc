@@ -1,6 +1,7 @@
 import galois
 import numpy as np
 from scipy.sparse import lil_matrix
+import stim
 
 def cyclic_shift_matrix(l):
     arr = np.eye(l, dtype=int)
@@ -71,6 +72,18 @@ def SGSOP(Gx, Gz, n):
 
     return (logicals, generators)
 
+def get_nbr(i, j):
+    if (i % 2 == 0):
+        if (j % 2 == 0):
+            return "x"
+        else:
+            return "r"
+    else:
+        if (j % 2 == 0):
+            return "l"
+        else:
+            return "z"
+
 def get_logicals(Hx, Hz, gen_type=False):
     n = Hx.shape[1]
     Gx, col_Gx = par2gen(Hx)
@@ -86,3 +99,37 @@ def get_logicals(Hx, Hz, gen_type=False):
 def manhattan(qbts):
     p, q = qbts
     return np.abs(p[0]-q[0])+np.abs(p[1]-q[1])
+
+def generate_error(Theta, Pauli):
+    result = stim.Circuit()
+    assert len(Theta) == len(Pauli)
+    
+    operations = {
+        'X': {
+            1: ['S', 'Z', 'H', 'Z', 'S'],
+            2: ['X'],
+            3: ['S', 'H', 'S']
+        },
+        'Y': {
+            1: ['H', 'Z'],
+            2: ['Y'],
+            3: ['Z', 'H']
+        },
+        'Z': {
+            1: ['H', 'S', 'Z', 'H', 'Z', 'S', 'H'],
+            2: ['Z'],
+            3: ['H', 'S', 'H', 'S', 'H']
+        }
+    }
+    
+    for i in range(len(Theta)):
+        Theta[i] = Theta[i] % 4
+        if Theta[i] == 0:
+            continue
+        
+        pauli_type = Pauli[i][0]
+        qubit = Pauli[i][1]
+        for op in operations[pauli_type].get(Theta[i], []):
+            result.append(op, qubit)
+        
+    return result

@@ -50,6 +50,8 @@ class BPOSD:
         print("Check matrix shape:", self._matrices.check_matrix.shape)
         # print("Priors shape:", self._matrices.priors.shape)
         max_osd_order = h_shape[1] - h_shape[0]
+        if max_osd_order <= 0:
+            max_osd_order = 1
         self._bposd = BpOsdDecoder(
             pcm=self._matrices.check_matrix,
             max_iter=max_bp_iters,

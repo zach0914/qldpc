@@ -2,10 +2,8 @@ import galois
 import numpy as np
 from scipy.sparse import lil_matrix
 import stim
-
-def cyclic_shift_matrix(l):
-    arr = np.eye(l, dtype=int)
-    return np.roll(arr, axis=1, shift=1)
+from qldpc.codes.classical import ClassicalCode, HammingCode
+from qldpc.codes.quantum import HGPCode
 
 def par2gen(H):
     GF = galois.GF(2)
@@ -33,6 +31,33 @@ def par2gen(H):
         print("FAILED")
         return
     return (np.array(G, dtype=int), np.array(col_G, dtype=int))
+
+def get_classical_code(r):
+    '''
+    Generate a classical Hamming code with r parity bits.
+    Hamming codes are a family of linear error-correcting codes that can detect and correct single-bit errors.
+    They are defined by their parameters (n, k), where n is the length of the codeword and k is the number of information bits.
+    ''' 
+    code = HammingCode(r)
+    return code.matrix
+
+def generate_HGP_code(ka, kb):
+    """
+    Generate a HGP code from two classical codes.
+    ka: the number of information bits in code_a
+    kb: the number of information bits in code_b
+    The HGP code is a quantum error-correcting code that is constructed from two linear classical codes.   
+    """
+    code_a = get_classical_code(ka)
+    code_b = get_classical_code(kb)
+    HGP_code = HGPCode(code_a, code_b)
+    matrix_x = HGP_code.matrix_x
+    matrix_z = HGP_code.matrix_z
+    # print(f"parity_matrix_x.shape: {matrix_x.shape}")
+    # print(f"parity_matrix_z.shape: {matrix_z.shape}")
+    # print(f"parity_matrix_x: {matrix_x}")
+    # print(f"parity_matrix_z: {matrix_z}")
+    return HGP_code
 
 def commute(x, z, n):
     # 0 if commute, 1 if anticommute
@@ -72,18 +97,6 @@ def SGSOP(Gx, Gz, n):
 
     return (logicals, generators)
 
-def get_nbr(i, j):
-    if (i % 2 == 0):
-        if (j % 2 == 0):
-            return "x"
-        else:
-            return "r"
-    else:
-        if (j % 2 == 0):
-            return "l"
-        else:
-            return "z"
-
 def get_logicals(Hx, Hz, gen_type=False):
     n = Hx.shape[1]
     Gx, col_Gx = par2gen(Hx)
@@ -95,10 +108,6 @@ def get_logicals(Hx, Hz, gen_type=False):
 
     if gen_type: return logX
     else: return logZ
-
-def manhattan(qbts):
-    p, q = qbts
-    return np.abs(p[0]-q[0])+np.abs(p[1]-q[1])
 
 def generate_error(Theta, Pauli):
     result = stim.Circuit()
